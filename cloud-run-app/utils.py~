@@ -1,0 +1,17 @@
+import json
+from typing import Tuple
+
+
+class Utils():
+    @staticmethod
+    def success_response(request_id: str, log) -> Tuple[dict, int]:
+        log.debug(f"request_id={request_id} started")
+        return {"result": "success",
+                "error_message": ""
+                }, 200
+
+    @staticmethod
+    def error_response(message, log, http_code=400):
+        log.debug(f"returning ERROR {message}")
+        return {"result": "fail",
+                "error_message": message}, http_code
