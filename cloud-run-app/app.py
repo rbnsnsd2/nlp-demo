@@ -7,13 +7,12 @@ from flask import Flask
 from flask import request
 from numpy import argmax
 
-#from utils.vectorizer import textVectorizer
 from load_models import clf_monster, textVectorizer
 from utils import Utils
-
+from carmilla_copilot import CarmillaCopilot
 
 """
-Define logging
+Define simple logger
 """
 logFormatter = logging.Formatter(
     '[%(asctime)s] [%(levelname)s] \
@@ -28,16 +27,56 @@ log.addHandler(stdLogger)
 log.setLevel(logging.DEBUG)
 
 
-"""
-Setup initial requirements
-"""
 app = Flask(__name__)
+carmilla = CarmillaCopilot(log)
+"""Setup initial requirements"""
 
-"""
-Vampiric classification
-"""
+@app.route('/api/carmilla', methods=['GET'])
+def carmilla_copilot():
+    """Continue in the style of Carmilla"""
+    log.info("STARTED")
+    id_request = uuid4().hex
+    # log headers and IP
+    try:
+        remote_addr = str(request.remote_addr)
+        headers = str(request.headers)
+        host = request.headers.get("Host")
+        user_agent = request.headers.get("User-Agent")
+        cookie = request.headers.get("Cookie")
+        log.info(f"IP:{remote_addr} headers:{headers}")
+    except Exception as e:
+        log.error(f"logging of headers failed with: {e}")
+
+    try:
+        text = str(request.args.get("x"))
+        text = text.replace("%20", " ")
+        log.debug(f"text: {text}")
+        output_text = carmilla(text)
+
+        output = {
+            "id_request": id_request,
+            "remote_addr": remote_addr,
+            "user_agent": user_agent,
+            "cookie": cookie,
+            "input_text": text,
+            "carmilla_copilot": output_text,
+        }
+            
+        response = app.response_class(
+            response=json.dumps(output),
+            status=200,
+            mimetype='application/json'
+        )
+
+        return response
+    except Exception as e:
+        log.error(e)
+        return Utils.error_response(id_request, log)
+
+
 @app.route('/api/vampire', methods=['GET'])  # type: ignore
 def vampire_call():
+    """Vampiric classification"""
     log.info("STARTED")
     id_request = uuid4().hex
     # log headers and IP
@@ -67,7 +106,6 @@ def vampire_call():
         monster = monster_dct.get(
             argmax(monster_type_prob), "not sure")
 
-
         output = {
             "id_request": id_request,
             "remote_addr": remote_addr,
@@ -88,7 +126,7 @@ def vampire_call():
         return response
     except Exception as e:
         log.error(e)
-        return Utils.success_response(id_request, log)
+        return Utils.error_response(id_request, log)
 
 
 @app.errorhandler(500)
